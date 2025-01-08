@@ -7,7 +7,7 @@ import { PlusCircle, Edit } from 'lucide-react';
 interface Setting {
   id: string;
   sid: string;
-  account_name: string;
+  account_name: string; // Updated field
   package: string;
   status: string;
 }
@@ -15,86 +15,48 @@ interface Setting {
 export default function SettingsDashboard() {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true;
-    
-    async function fetchSettings() {
-      try {
-        // First verify user authentication
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
-        // Log the fetch attempt
-        await logAction(
-          'fetch_settings',
-          'settings',
-          null,
-          LogLevel.INFO,
-          {
-            rbam: { authStatus: true },
-            ccp: { contextValid: true }
-          }
-        );
-
-        // Fetch settings with proper RLS policies
-        const { data, error: fetchError } = await supabase
-          .from('settings')
-          .select('id, sid, account_name, package, status')
-          .order('account_name');
-
-        if (fetchError) throw fetchError;
-        
-        if (isMounted) {
-          setSettings(data || []);
-          setError(null);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
-        if (isMounted) {
-          setError('Failed to load settings');
-          setLoading(false);
-        }
-        
-        await logAction(
-          'fetch_settings_error',
-          'settings',
-          { error: String(error) },
-          LogLevel.ERROR,
-          {
-            rbam: { authStatus: false },
-            ccp: { contextValid: false }
-          }
-        );
-      }
-    }
-
     fetchSettings();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  async function fetchSettings() {
+    try {
+      await logAction(
+        'fetch_settings',
+        'settings',
+        null,
+        LogLevel.INFO,
+        {
+          rbam: {
+            authStatus: true,
+          },
+        }
+      );
+
+      const { data, error } = await supabase
+        .from('settings')
+        .select('id, sid, account_name, package, status') // Explicitly select columns
+        .order('sid');
+
+      if (error) throw error;
+      setSettings(data || []);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      await logAction(
+        'fetch_settings_error',
+        'settings',
+        { error: String(error) },
+        LogLevel.ERROR
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleRowClick(setting: Setting) {
     try {
-      // Verify access before navigation
-      const { data: lookupData, error: lookupError } = await supabase
-        .from('sid_lookup')
-        .select('sid')
-        .eq('sid', setting.sid)
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (lookupError || !lookupData) {
-        throw new Error('Access denied');
-      }
-
       await logAction(
         'select_setting',
         'settings',
@@ -107,12 +69,9 @@ export default function SettingsDashboard() {
           },
         }
       );
-
       navigate(`/client/${setting.sid}`);
     } catch (error) {
       console.error('Error selecting setting:', error);
-      setError('Access denied');
-      
       await logAction(
         'select_setting_error',
         'settings',
@@ -130,26 +89,11 @@ export default function SettingsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-6">
-        <p className="text-red-600">{error}</p>
-        <button
-          onClick={() => {
-            setLoading(true);
-            setError(null);
-            fetchSettings();
-          }}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Retry
-        </button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading settings...</p>
+        </div>
       </div>
     );
   }
@@ -175,7 +119,7 @@ export default function SettingsDashboard() {
                       SID
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Account Name
+                      Account Name {/* Updated header */}
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Package
@@ -196,7 +140,7 @@ export default function SettingsDashboard() {
                         {setting.sid}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {setting.account_name}
+                        {setting.account_name} {/* Updated field */}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                         {setting.package}

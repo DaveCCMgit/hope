@@ -32,16 +32,19 @@ export async function logAction(
   try {
     const { data: { user } } = await supabase.auth.getUser();
     
+    // Check SID lookup first if context includes a SID
     let sidLookupResult = null;
     let rlsPolicyResult = null;
     
     if (context?.ccp?.sid) {
+      // First check SID lookup
       const { data: lookupData, error: lookupError } = await supabase.rpc('check_sid_lookup', { 
         sid_param: context.ccp.sid 
       });
 
       sidLookupResult = !!lookupData && !lookupError;
 
+      // Only check RLS policy if SID lookup passed
       if (sidLookupResult) {
         const { data: settingsData, error: settingsError } = await supabase
           .from('settings')
@@ -53,6 +56,12 @@ export async function logAction(
           name: 'settings_access',
           allowed: !settingsError,
           reason: settingsError?.message
+        };
+      } else {
+        rlsPolicyResult = {
+          name: 'settings_access',
+          allowed: false,
+          reason: 'SID lookup failed'
         };
       }
     }

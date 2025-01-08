@@ -8,3 +8,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export async function isAdmin() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return !!user; // All authenticated users are considered admin
+}

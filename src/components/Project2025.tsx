@@ -23,16 +23,6 @@ interface Note {
   created_at: string;
 }
 
-interface CRMClient {
-  id: string;
-  sid: string;
-  account_name: string;
-  package: string;
-  marketing_plan_url: string | null;
-  brand_guidelines_url: string | null;
-  brand_templates_url: string | null;
-}
-
 type MilestoneStatus = 'complete' | 'in_progress' | 'incomplete';
 
 export default function Project2025() {
@@ -44,17 +34,15 @@ export default function Project2025() {
   const [loading, setLoading] = useState(true);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
-  const [crmClient, setCrmClient] = useState<CRMClient | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
         // Fetch stages and milestones from template tables
-        const [stagesResult, milestonesResult, statusesResult, crmResult] = await Promise.all([
+        const [stagesResult, milestonesResult, statusesResult] = await Promise.all([
           supabase.from('project_2025_stages').select('*'),
           supabase.from('project_2025_milestones').select('*'),
-          supabase.from('project_2025_orphan').select('*').eq('sid', sid),
-          supabase.from('crm_client').select('*').eq('sid', sid).single()
+          supabase.from('project_2025_orphan').select('*').eq('sid', sid)
         ]);
 
         if (stagesResult.error) throw stagesResult.error;
@@ -62,7 +50,6 @@ export default function Project2025() {
 
         setStages(stagesResult.data || []);
         setMilestones(milestonesResult.data || []);
-        setCrmClient(crmResult.data);
 
         // Process milestone statuses
         if (statusesResult.data?.[0]) {
@@ -244,37 +231,6 @@ export default function Project2025() {
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-8 grid grid-cols-2 gap-6">
-          {/* Marketing Plan Section */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Marketing Plan</h2>
-            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg">
-              <p className="text-gray-500 mb-4">Marketing plan details will appear here</p>
-              {crmClient?.marketing_plan_url ? (
-                <a
-                  href={crmClient.marketing_plan_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  View Marketing Plan
-                </a>
-              ) : (
-                <p className="text-sm text-gray-400">No marketing plan available</p>
-              )}
-            </div>
-          </div>
-
-          {/* Campaigns Section */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Campaigns</h2>
-            <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-gray-300 rounded-lg">
-              <p className="text-gray-500 mb-4">Campaign information will appear here</p>
-              <p className="text-sm text-gray-400">No active campaigns</p>
-            </div>
-          </div>
         </div>
       </div>
 
